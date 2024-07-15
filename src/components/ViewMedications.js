@@ -1,15 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import '../App.css';
 
 const ViewMedications = ({ client }) => {
   const [medications, setMedications] = useState([]);
+  const [filteredMedications, setFilteredMedications] = useState([]);
   const [error, setError] = useState(null);
+  const [doctorFilter, setDoctorFilter] = useState('');
+  const [medicationFilter, setMedicationFilter] = useState('');
+  const patientId = '263';
 
   useEffect(() => {
     const fetchMedications = async () => {
       try {
-        const response = await client.request('Medication');
-        setMedications(response.entry || []);
+        const response = await fetch(`http://159.223.196.104:8000/fhir/MedicationRequest?subject=Patient/${patientId}`, {
+          headers: {
+            'Content-Type': 'application/fhir+json'
+          }
+        });
+        if (!response.ok) throw new Error('Failed to fetch medications');
+        const data = await response.json();
+        setMedications(data.entry || []);
+        setFilteredMedications(data.entry || []);
       } catch (error) {
         console.error('Error fetching medications:', error);
         setError('Error fetching medications');
@@ -17,37 +27,66 @@ const ViewMedications = ({ client }) => {
     };
 
     fetchMedications();
-  }, [client]);
+  }, [patientId]);
+
+  useEffect(() => {
+    const filtered = medications.filter((entry) => {
+      const medicationRequest = entry.resource;
+      const doctor = medicationRequest.requester?.display || '';
+      const medication = medicationRequest.medicationReference?.display || '';
+      return (
+        doctor.toLowerCase().includes(doctorFilter.toLowerCase()) &&
+        medication.toLowerCase().includes(medicationFilter.toLowerCase())
+      );
+    });
+    setFilteredMedications(filtered);
+  }, [doctorFilter, medicationFilter, medications]);
 
   return (
     <div>
-      <h2>Ver Recetas</h2>
+      <h2>Ver Medicamentos</h2>
       {error && <div className="error">{error}</div>}
+      <div>
+        <label>Filtrar por Nombre del Médico:</label>
+        <input
+          type="text"
+          value={doctorFilter}
+          onChange={(e) => setDoctorFilter(e.target.value)}
+          placeholder="Nombre del Médico"
+        />
+      </div>
+      <div>
+        <label>Filtrar por Nombre del Medicamento:</label>
+        <input
+          type="text"
+          value={medicationFilter}
+          onChange={(e) => setMedicationFilter(e.target.value)}
+          placeholder="Nombre del Medicamento"
+        />
+      </div>
       <table>
         <thead>
           <tr>
             <th>ID</th>
-            <th>Medicamento</th>
-            <th>Médico</th>
+            <th>Nombre del Medicamento</th>
+            <th>Nombre del Médico</th>
             <th>Fecha de Inicio</th>
             <th>Fecha de Término</th>
           </tr>
         </thead>
         <tbody>
-          {medications.map((entry) => {
+          {filteredMedications.map((entry) => {
             const medicationRequest = entry.resource;
-            const medication = medicationRequest.medicationCodeableConcept?.text || 'N/A';
-            const requester = medicationRequest.requester?.display || 'N/A';
-            const dosageInstruction = medicationRequest.dosageInstruction?.[0]?.text || 'N/A';
-            const dosageParts = dosageInstruction.split(' ');
-            const startDate = dosageParts[2] || 'N/A';
-            const endDate = dosageParts[4] || 'N/A';
+            const medication = medicationRequest.medicationReference?.display || 'N/A';
+            const doctor = medicationRequest.requester?.display || 'N/A';
+            const startDate = medicationRequest.dosageInstruction[0]?.timing?.repeat?.boundsPeriod?.start || 'N/A';
+            const endDate = medicationRequest.dosageInstruction[0]?.timing?.repeat?.boundsPeriod?.end || 'N/A';
 
             return (
               <tr key={medicationRequest.id}>
                 <td>{medicationRequest.id}</td>
                 <td>{medication}</td>
-                <td>{requester}</td>
+                <td>{doctor}</td>
                 <td>{startDate}</td>
                 <td>{endDate}</td>
               </tr>
@@ -60,3 +99,8 @@ const ViewMedications = ({ client }) => {
 };
 
 export default ViewMedications;
+
+
+
+
+
