@@ -9,6 +9,7 @@ const AppointmentForm = ({ client }) => {
   const [filteredServices, setFilteredServices] = useState([]);
   const [institution, setInstitution] = useState('');
   const [service, setService] = useState('');
+  const [priority, setPriority] = useState('routine');
   const [error, setError] = useState(null);
 
   const [patientData, setPatientData] = useState({
@@ -116,7 +117,59 @@ const AppointmentForm = ({ client }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    navigate('/appointment/calendar', { state: { institution, service, patientData, patientId: 263 } });
+
+    try {
+      const serviceRequest = {
+        resourceType: "ServiceRequest",
+        id: "ejemplo1",
+        meta: {
+          versionId: "1",
+          lastUpdated: new Date().toISOString(),
+          source: "#4UGOQ86lRgAtYSI0",
+          profile: [
+            "http://biomedica.uv.cl/fhir/ig/crisis/StructureDefinition/SolicitudServicio"
+          ]
+        },
+        extension: [
+          {
+            url: "http://biomedica.uv.cl/fhir/ig/crisis/StructureDefinition/Prestaciones",
+            valueCode: "18"
+          },
+          {
+            url: "http://biomedica.uv.cl/fhir/ig/Agenda/StructureDefinition/HealthcareService",
+            valueReference: {
+              reference: `HealthcareService/${service}`
+            }
+          }
+        ],
+        status: "active",
+        intent: "order",
+        priority: priority,
+        subject: {
+          reference: "Patient/263",
+          display: `${patientData.nombre} ${patientData.apellido}`
+        },
+        authoredOn: new Date().toISOString()
+      };
+
+      const response = await fetch('http://159.223.196.104:8000/fhir/ServiceRequest', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/fhir+json'
+        },
+        body: JSON.stringify(serviceRequest)
+      });
+
+      if (!response.ok) {
+        throw new Error('Error creating ServiceRequest');
+      }
+
+      const createdServiceRequest = await response.json();
+      navigate('/appointment/calendar', { state: { institution, service, patientData, serviceRequestId: createdServiceRequest.id, patientId: 263 } });
+    } catch (error) {
+      console.error('Error creating ServiceRequest:', error);
+      setError('Error creating ServiceRequest');
+    }
   };
 
   const calculateAge = (birthDate) => {
@@ -136,6 +189,13 @@ const AppointmentForm = ({ client }) => {
       {error && <div className="error">{error}</div>}
       <InstitutionSelect institutions={institutions} institution={institution} setInstitution={setInstitution} />
       <ServiceSelect services={filteredServices} service={service} setService={setService} />
+      <label>
+        Prioridad:
+        <select value={priority} onChange={(e) => setPriority(e.target.value)}>
+          <option value="routine">Rutina</option>
+          <option value="urgent">Urgente</option>
+        </select>
+      </label>
       <input
         type="text"
         name="nombre"
@@ -189,17 +249,3 @@ const AppointmentForm = ({ client }) => {
 };
 
 export default AppointmentForm;
-
-
-
-
-
-
-
-
-
-
-
-
-
-

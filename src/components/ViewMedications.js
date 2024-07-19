@@ -99,8 +99,3 @@ const ViewMedications = ({ client }) => {
 };
 
 export default ViewMedications;
-
-
-
-
-

@@ -158,9 +158,3 @@ const AddMedicationRequest = ({ client }) => {
 };
 
 export default AddMedicationRequest;
-
-
-
-
-
-

@@ -1,4 +1,3 @@
-/* eslint-disable no-mixed-operators */
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -12,7 +11,7 @@ const AppointmentCalendar = ({ client }) => {
   const [serviceName, setServiceName] = useState('');
   const location = useLocation();
   const navigate = useNavigate();
-  const { service, patientId } = location.state || {};
+  const { service, patientId, serviceRequestId } = location.state || {};
   const firstAppointmentRange = { start: 38389, end: 38411 };
   const secondAppointmentRange = { start: 38466, end: 38486 };
   const [attempt, setAttempt] = useState(0); // Para rastrear el intento actual
@@ -153,6 +152,9 @@ const AppointmentCalendar = ({ client }) => {
 
       const appointment = await getResponse.json();
       appointment.status = 'booked';
+      appointment.basedOn = [{
+        reference: `ServiceRequest/${serviceRequestId}`
+      }];
 
       console.log('Appointment to be sent:', appointment);
 
@@ -160,7 +162,8 @@ const AppointmentCalendar = ({ client }) => {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/fhir+json',
-          'If-Match': getResponse.headers.get('ETag') // Utilizar ETag para la concurrencia
+          // Comentando esta línea para intentar solucionar el problema de CORS
+          // 'If-Match': getResponse.headers.get('ETag')
         },
         body: JSON.stringify(appointment)
       });
@@ -171,14 +174,19 @@ const AppointmentCalendar = ({ client }) => {
         throw new Error(`Failed to book appointment. Details: ${JSON.stringify(errorData)}`);
       }
 
-      const practitioner = appointment.participant.find(p => p.actor.reference.startsWith('Practitioner/')).actor.display;
+      const updatedAppointment = await putResponse.json();
+      const practitioner = updatedAppointment.participant.find(p => p.actor.reference.startsWith('Practitioner/')).actor.display;
 
       alert(`Cita reservada:
       Nombre del Paciente: ${patientData.nombre} ${patientData.apellido}
       Médico: ${practitioner}
-      Fecha y Hora: ${new Date(appointment.start).toLocaleString()}
+      Fecha y Hora: ${new Date(updatedAppointment.start).toLocaleString()}
       Servicio: ${serviceName}
-      CESFAM: ${cesfamName}`);
+      CESFAM: ${cesfamName}
+      Estado de la cita: ${updatedAppointment.status}
+      ID del ServiceRequest: ${serviceRequestId}`);
+
+      console.log(`Appointment updated from proposed to booked with ServiceRequest ID: ${serviceRequestId}`);
       
       navigate('/');
     } catch (error) {
@@ -241,10 +249,4 @@ const AppointmentCalendar = ({ client }) => {
 };
 
 export default AppointmentCalendar;
-
-
-
-
-
-
 

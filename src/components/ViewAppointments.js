@@ -107,5 +107,3 @@ const ViewAppointments = ({ client }) => {
 };
 
 export default ViewAppointments;
-
-
