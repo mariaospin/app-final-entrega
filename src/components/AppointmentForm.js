@@ -1,8 +1,14 @@
 import React, { useState, useEffect } from 'react';
+// Se importa useNavigate , ya que tinen como funcion permitir a los usuarios redirigirse a diferentes rutas dentro de la aplicación si necesidad de que hagan clic en un enlace.
 import { useNavigate } from 'react-router-dom';
+//Se importa estos componentes para usarlos en los desplegables con el fin de que el usuario escoja una organizacion y segun la organizacion , se escoge los servicios que requiere.
 import InstitutionSelect from './InstitutionSelect';
 import ServiceSelect from './ServiceSelect';
 
+//En esta parte del codigo se crean las variables, para guardar, primero la institucion u organización que el usuario escoge en la pantalla.
+//Tambien se escoge y se guarda el servicio, , tambien para filtrar los servicios.
+//La prioridad son que pide la cita.
+//y tambien guarda los errores que se va generando cuando se ejecuta el codigo , para que finalmente los muestre en la consola de la app.
 const AppointmentForm = ({ client }) => {
   const [institutions, setInstitutions] = useState([]);
   const [healthcareServices, setHealthcareServices] = useState([]);
@@ -12,6 +18,8 @@ const AppointmentForm = ({ client }) => {
   const [priority, setPriority] = useState('routine');
   const [error, setError] = useState(null);
 
+  //Esta variable es para mostrar los datos rescatados del paciente que se enrolo manualmente en el postman.
+  //se muestra como un formulario.
   const [patientData, setPatientData] = useState({
     nombre: '',
     apellido: '',
@@ -21,8 +29,13 @@ const AppointmentForm = ({ client }) => {
     edad: ''
   });
 
+  //Se declara esta variable , para que cuando el usuario haya escogido la organizacion, el servicio y la prioridad, pase al siguiente punto que es  escoger la hora con solo un click.
   const navigate = useNavigate();
 
+  //En le useEffect se pone el codigo que queremos que comience a ejecutar, primero que busque por medio de la URL/Organization/ID, busque su nombre para que sea mostrado en pantalla.
+  //Luego se busca por el servicio que el usuario escogio, y se muestra en pantalla, ademas para mejor rendimieto se le dice que solo muestre los servicios que esten los ID entre el 353 y el  372.
+  //Luego el usuario escoge la prioridad con que necesita la cita si es de rutina o es urgente.
+  //Finalmente, con la URL y el ID de patient, para rescatar los datos y mostrarlos en pantalla.
   useEffect(() => {
     const fetchInstitutions = async () => {
       try {
@@ -115,6 +128,13 @@ const AppointmentForm = ({ client }) => {
     setPatientData({ ...patientData, [name]: value });
   };
 
+  //Apartir de este codigo se comienza a crear el recurso ServiceRequest, automaticamente.
+  //Prevent Default: e.preventDefault(); evita que el formulario se envíe de la manera predeterminada.
+  //Crear el ServiceRequest: Se construye el objeto serviceRequest con los datos necesarios.
+  //Enviar la solicitud: Se utiliza fetch para enviar una solicitud POST al servidor FHIR con el serviceRequest.
+ ///Manejo de errores: Si la solicitud no es exitosa (!response.ok), se lanza un error.
+ //Respuesta exitosa: Si la solicitud es exitosa, se muestra un mensaje de éxito y se redirige a la página principal usando navigate('/').
+//Catch: Si ocurre algún error, se maneja mostrando un mensaje de error
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -172,6 +192,7 @@ const AppointmentForm = ({ client }) => {
     }
   };
 
+  //Esta variable segun la frcha de nacimiento del paciente calcula los años que tiene.
   const calculateAge = (birthDate) => {
     const today = new Date();
     const birthDateObj = new Date(birthDate);
@@ -248,4 +269,5 @@ const AppointmentForm = ({ client }) => {
   );
 };
 
+//Exporta para que se utilicen las variables escogidas y guardadas, para ser usadas en la otra ruta. 
 export default AppointmentForm;

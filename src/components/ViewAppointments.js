@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
 
+//Primero se crea una vairaible llamada Viewappointment que va a mostrar todas las citas, que haya escogido el cliente,que se declara en la parte principal app.js
+//luego dentro de esta variable, se van a guardar la ista de citas, los errores que se encontraron para despues mostrarlos en consola,y ademas siempre va a guardar la variable del CESFAM,ene ste caso solo se tiene un CESFAm osea la organización por eso solo se le pone el ID, en caso de puede darse la ocpion de decile que solo muestre las citas a los CESFAM escogidos en la parte de appoinmentForm.js.
 const ViewAppointments = ({ client }) => {
   const [appointments, setAppointments] = useState([]);
   const [error, setError] = useState(null);
   const cesfamName = "CESFAM RODELILLO";
 
+  //Aca el useEffect() hace la funcón de que traiga a pantalla las citas cuando el usuario haya cargado de la pagina, osea seleecionare sa opción en la app.
+  //para mostrar el nombre del servicio, se toma el ID del servicio escogido en appointmentform, que luego se guarda, y se utiliza aca donde se le pide al sistema que con el ID del recurso servicio, busque el nombre para mostarlo en la tabla.
   useEffect(() => {
     const fetchServiceName = async (serviceId) => {
       try {
@@ -24,6 +28,10 @@ const ViewAppointments = ({ client }) => {
       }
     };
 
+    //Esta variable va a mostrar la lista de todas las citas que haya tomado el paciente, filtra y solo muestra las citas que su estado sea booked (reservado).
+    //Primero busca todas las citas y va filtrando solo por las que esten reservadas, si hay citas que cumplen con el estado reservado, se procesa cada cita para obtener detalles como nombre del médico y el nombre del servicio de salud.
+    //si no hay citas se establece como una lista vacia.
+    //Se llama a la función fetchAppoinments para que empiece a obtener las citas cuando se carga la pagina.
     const fetchAppointments = async () => {
       console.log('Fetching booked appointments');
       try {
@@ -72,6 +80,8 @@ const ViewAppointments = ({ client }) => {
     fetchAppointments();
   }, []);
 
+  //finalmente, los resultados de arriba se muestran en pantalla con este codigo.
+  //para cada columna, se llava a cada variable filtrandolos por el ID obtenido anteriormente, con el recurso appointment.
   return (
     <div>
       <h2>Mis Citas</h2>

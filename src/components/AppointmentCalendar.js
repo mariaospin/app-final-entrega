@@ -1,21 +1,39 @@
 /* eslint-disable react-hooks/exhaustive-deps */
+//La linea de eslint-disebale....... , tiene como función desactivar la regla especifica que puede advertir sobre las dependencias faltantes en useEffetc.
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-const AppointmentCalendar = ({ client }) => {
+
+const AppointmentCalendar = ({ client }) => {//Se declara la variable AppointmentCalendar que esta recibiendo un prop llamado client, el cual es el ID del usuario osea el paciente que est registrado en el servidor FHIR.
+ // appointments: Guarda una lista de citas disponibles.
+//selectedAppointment: Almacena el ID de La cita seleccionada por el usuario.
+//error: Almacena mensajes de error.
+//patientData: Almacena datos del paciente.
+//cesfamName: Almacena el  nombre del CESFAM (Centro de Salud Familiar).
+//serviceName: Almacena el nombre del servicio de salud.
   const [appointments, setAppointments] = useState([]);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [error, setError] = useState(null);
   const [patientData, setPatientData] = useState({});
   const [cesfamName, setCesfamName] = useState('');
   const [serviceName, setServiceName] = useState('');
+  //const location = useLocation();: Obtiene la ubicación actual de la aplicación.
+  //const navigate = useNavigate();: Obtiene una función para realizar la navegación programática.
+  //const { service, patientId, serviceRequestId } = location.state || {};: Extrae service, patientId, y serviceRequestId del estado de la ubicación, si están disponibles.
   const location = useLocation();
   const navigate = useNavigate();
   const { service, patientId, serviceRequestId } = location.state || {};
+  //Define dos rangos de identificadores de citas (firstAppointmentRange y secondAppointmentRange) y una variable de estado attempt para rastrear el intento actual de búsqueda de citas.
+  //Esto funciona de la siguiente manera, cuando el paciente termina de rellenar el appoinmentFrom y da siguiente se busca una hora disponible que esa es filtrada en el primer rango de citas, si el paciente rechza una vez se vuelve a filtrar por el segunda rango de citas , y si el paciente rechaza por segunda vez se manda lista de espera.
   const firstAppointmentRange = { start: 38389, end: 38411 };
   const secondAppointmentRange = { start: 38466, end: 38486 };
   const [attempt, setAttempt] = useState(0); // Para rastrear el intento actual
-
+  
+  //Este useEffect se ejecuta cuando patientId o service cambian. Dentro de este useEffect:
+  //fetchPatientData: Función asíncrona que obtiene los datos del paciente de un servidor FHIR y actualiza el estado patientData.
+  //fetchCesfamName: Función asíncrona que obtiene el nombre del CESFAM y actualiza el estado cesfamName.
+  //fetchServiceName: Función asíncrona que obtiene el nombre del servicio de salud y actualiza el estado serviceName.
+  //Llama a estas funciones para obtener y actualizar los datos necesarios.
   useEffect(() => {
     const fetchPatientData = async () => {
       try {
@@ -79,6 +97,9 @@ const AppointmentCalendar = ({ client }) => {
     fetchServiceName();
   }, [patientId, service]);
 
+  //Este useEffect se ejecuta cuando service, attempt, firstAppointmentRange o secondAppointmentRange cambian.
+ //fetchAppointments: Función asíncrona que obtiene las citas disponibles de un servidor FHIR y filtra las citas basadas en el rango de identificadores y la fecha actual.
+ //Si service está definido, determina el rango de citas a utilizar (firstAppointmentRange o secondAppointmentRange) basado en el valor de attempt y llama a fetchAppointments con ese rango.
   useEffect(() => {
     console.log('Fetching appointments for service:', service);
     const fetchAppointments = async (range) => {
@@ -96,6 +117,9 @@ const AppointmentCalendar = ({ client }) => {
         if (data.entry) {
           const fetchedAppointments = data.entry.map(entry => entry.resource).filter(app => {
             const appointmentId = parseInt(app.id, 10);
+            const appointmentDate = new Date(app.start);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0); // Establece la hora a las 00:00 para comparar solo la fecha
             return (
               app.extension &&
               app.extension.some(
@@ -105,7 +129,8 @@ const AppointmentCalendar = ({ client }) => {
                   ext.valueReference.reference === `HealthcareService/${service}`
               ) &&
               appointmentId >= range.start &&
-              appointmentId <= range.end
+              appointmentId <= range.end &&
+              appointmentDate > today
             );
           });
           console.log('Filtered Appointments:', fetchedAppointments);
@@ -125,11 +150,18 @@ const AppointmentCalendar = ({ client }) => {
       fetchAppointments(range);
     }
   }, [service, attempt, firstAppointmentRange, secondAppointmentRange]);
+  //Define una función para manejar la selección de una cita, actualizando el estado selectedAppointment.
 
   const handleSelectAppointment = (appointmentId) => {
     setSelectedAppointment(appointmentId);
   };
 
+  //Define una función asíncrona handleSubmit para manejar el envío del formulario:
+//e.preventDefault(): Evita el comportamiento predeterminado del formulario (que es recargar la página).
+//Verifica si se ha seleccionado una cita. Si no, establece un mensaje de error.
+//Intenta obtener la cita seleccionada del servidor FHIR, actualizar su estado a booked, y enviar la actualización al servidor.
+//Muestra un mensaje de éxito si la cita se reserva correctamente y redirige a la página principal.
+//Maneja errores mostrando mensajes de error.
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -162,7 +194,6 @@ const AppointmentCalendar = ({ client }) => {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/fhir+json',
-          // Comentando esta línea para intentar solucionar el problema de CORS
           // 'If-Match': getResponse.headers.get('ETag')
         },
         body: JSON.stringify(appointment)
@@ -194,7 +225,9 @@ const AppointmentCalendar = ({ client }) => {
       setError(`Failed to book appointment. Please try again later. Details: ${error.message}`);
     }
   };
-
+  //Define una función para manejar el rechazo de la cita:
+  //Si es el primer intento (attempt es 0), incrementa attempt a 1.
+  //Si es el segundo intento, muestra un mensaje de alerta y redirige a la página principal.
   const handleReject = () => {
     if (attempt === 0) {
       setAttempt(1);
